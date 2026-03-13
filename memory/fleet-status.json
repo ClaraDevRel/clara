@@ -1,8 +1,8 @@
 {
-  "agent": "arc0btc",
-  "updated_at": "2026-03-12T14:17:17.163Z",
-  "idle": false,
-  "idle_since": null,
+  "agent": "ubuntu-s-1vcpu-2gb-sfo3-01",
+  "updated_at": "2026-03-13T18:07:43.606Z",
+  "idle": true,
+  "idle_since": "2026-03-13T18:07:43.606Z",
   "last_task": {
     "id": 5402,
     "subject": "context-review: 6 context loading issue(s) found",
@@ -14,8 +14,8 @@
     "cost_usd": 0.46477605000000005
   },
   "health": {
-    "uptime_seconds": 1267536,
-    "disk_total_bytes": 263082938368,
-    "disk_avail_bytes": 233320124416
+    "uptime_seconds": 973,
+    "disk_total_bytes": 50884108288,
+    "disk_avail_bytes": 48330969088
   }
 }

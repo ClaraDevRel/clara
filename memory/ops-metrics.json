@@ -1,20 +1,20 @@
 {
-  "timestamp": "2026-03-12T10:33:16.985Z",
+  "timestamp": "2026-03-13T18:07:44.018Z",
   "window_hours": 4,
   "created": 0,
   "completed": 0,
   "failed": 0,
   "pending_count": 1,
-  "active_count": 1,
+  "active_count": 0,
   "total_cost_usd": 0,
   "cost_per_completion": 0,
   "failure_rate": 0,
   "creation_completion_ratio": 0,
   "fleet": {
-    "agent": "arc0btc",
-    "updated_at": "2026-03-12T10:32:15.747Z",
-    "last_task_id": 5299,
-    "last_cycle_cost": 0.22962765,
+    "agent": "ubuntu-s-1vcpu-2gb-sfo3-01",
+    "updated_at": "2026-03-13T18:07:43.606Z",
+    "last_task_id": 5402,
+    "last_cycle_cost": 0.46477605000000005,
     "stale": false
   },
   "issues": []
