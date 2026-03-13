@@ -1,6 +1,7 @@
 // skills/clara-devrel/sensor.ts
-// Clara's DevRel master loop — proactive scheduling of community, build, publish, and docs work.
-// Uses the arc-starter scheduled_for system to create tasks at the right cadence.
+// Clara's DevRel master loop.
+// Proactively queues build, publish, and review tasks on a predictable cadence.
+// Clara is the developer — her own building experience is the signal, not community monitoring.
 
 import {
   claimSensorRun,
@@ -15,23 +16,34 @@ const SENSOR_NAME = "clara-devrel";
 const INTERVAL_MINUTES = 60;
 const log = createSensorLogger(SENSOR_NAME);
 
-// Cadence thresholds in hours
 const CADENCE = {
-  community: 24,       // daily community check
-  build: 72,           // build something every 3 days
-  weekly: 7 * 24,      // weekly publish + doc issues
-  monthly: 30 * 24,    // monthly docs sweep
+  build: 48,        // build something every 2 days
+  weekly: 7 * 24,   // publish learnings every week
+  monthly: 30 * 24, // friction review every month
 } as const;
 
 interface DevRelState {
   last_ran: string;
   last_result: "ok" | "error" | "skip";
   version: number;
-  last_community_check: string | null;
   last_build_task: string | null;
   last_weekly_task: string | null;
   last_monthly_task: string | null;
 }
+
+// Project ideas pool — rotated through to keep builds varied
+const PROJECT_IDEAS = [
+  { topic: "SIP-010 fungible token with a vesting schedule", template: "clarity", tags: "clarity,tokens,sip-010" },
+  { topic: "SIP-009 NFT with on-chain metadata stored in Clarity maps", template: "clarity", tags: "clarity,nft,sip-009" },
+  { topic: "Simple DAO: proposal + vote + execute pattern", template: "clarity", tags: "clarity,dao,governance" },
+  { topic: "Multi-sig wallet contract with time-locked execution", template: "clarity", tags: "clarity,multisig,security" },
+  { topic: "Stacks.js + Next.js app: connect wallet, read contract, call function", template: "nextjs", tags: "stacks.js,nextjs,frontend" },
+  { topic: "sBTC deposit + Clarity contract interaction end-to-end", template: "clarity", tags: "sbtc,clarity,bitcoin" },
+  { topic: "Stacking rewards tracker using read-only Clarity calls", template: "nextjs", tags: "stacking,pox,stacks.js" },
+  { topic: "Token swap contract using atomic STX-to-token exchange", template: "clarity", tags: "defi,tokens,atomic-swap" },
+  { topic: "BNS name lookup and registration via Stacks.js", template: "nextjs", tags: "bns,stacks.js,identity" },
+  { topic: "Contract-controlled escrow with dispute resolution", template: "clarity", tags: "clarity,escrow,defi" },
+] as const;
 
 function hoursSince(iso: string | null): number {
   if (!iso) return Infinity;
@@ -44,7 +56,6 @@ function todayKey(): string {
 
 function weekKey(): string {
   const d = new Date();
-  // ISO week — just use year + week-of-year approximation
   const start = new Date(d.getFullYear(), 0, 1);
   const week = Math.ceil(((d.getTime() - start.getTime()) / 86400000 + start.getDay() + 1) / 7);
   return `${d.getFullYear()}-W${String(week).padStart(2, "0")}`;
@@ -52,6 +63,12 @@ function weekKey(): string {
 
 function monthKey(): string {
   return new Date().toISOString().slice(0, 7);
+}
+
+// Pick a project idea based on day of year to rotate variety
+function pickProjectIdea() {
+  const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000);
+  return PROJECT_IDEAS[dayOfYear % PROJECT_IDEAS.length];
 }
 
 export default async function claraDevRelSensor(): Promise<string> {
@@ -64,7 +81,6 @@ export default async function claraDevRelSensor(): Promise<string> {
       last_ran: new Date().toISOString(),
       last_result: "ok",
       version: 1,
-      last_community_check: null,
       last_build_task: null,
       last_weekly_task: null,
       last_monthly_task: null,
@@ -73,169 +89,165 @@ export default async function claraDevRelSensor(): Promise<string> {
 
     let tasksCreated = 0;
 
-    // ── 1. Daily community check ──────────────────────────────────────────
-    if (hoursSince(state.last_community_check) >= CADENCE.community) {
-      const source = `sensor:clara-devrel:community:${todayKey()}`;
-      if (!pendingTaskExistsForSource(source)) {
-        insertTaskIfNew(source, {
-          subject: `[DevRel] Daily community check — find developer pain points`,
-          description: [
-            "Scan for Stacks developer questions and pain points across:",
-            "",
-            "1. GitHub Discussions:",
-            "   gh api repos/stx-labs/clarinet/discussions --jq '[.[] | select(.answer_chosen_at == null)] | .[0:5]'",
-            "   gh api repos/stx-labs/stacks.js/discussions --jq '[.[] | select(.answer_chosen_at == null)] | .[0:5]'",
-            "",
-            "2. Open issues labeled 'question' or 'help wanted':",
-            "   gh api 'repos/stx-labs/clarinet/issues?labels=question&state=open' --jq '.[0:10] | .[].title'",
-            "   gh api 'repos/stx-labs/stacks.js/issues?labels=question&state=open' --jq '.[0:10] | .[].title'",
-            "",
-            "3. X search (via social-x-posting skill):",
-            "   arc skills run --name social-x-posting -- search --query 'clarinet stacks developer' --limit 20",
-            "   arc skills run --name social-x-posting -- search --query 'clarity lang help' --limit 20",
-            "",
-            "Output:",
-            "- List the top 3 most common pain points you found",
-            "- For each: note the source, the question, and whether there's existing documentation",
-            "- If any pain point has no existing sample app or tutorial → create a follow-up task:",
-            "  arc tasks add --subject '[DevRel] Build: <topic>' --priority 4 --skills stacks-dev,github-repos,clara-site",
-            "",
-            "Close this task with a 1-paragraph summary of what developers are struggling with today.",
-          ].join("\n"),
-          skills: JSON.stringify(["clara-devrel", "social-x-posting"]),
-          priority: 5,
-          source,
-        }, "any");
-
-        state.last_community_check = new Date().toISOString();
-        tasksCreated++;
-        log("queued: daily community check");
-      }
-    }
-
-    // ── 2. Build cadence — every 3 days ──────────────────────────────────
+    // ── 1. Build cadence (every 48h) ──────────────────────────────────────
     if (hoursSince(state.last_build_task) >= CADENCE.build) {
       const source = `sensor:clara-devrel:build:${todayKey()}`;
       if (!pendingTaskExistsForSource(source)) {
+        const idea = pickProjectIdea();
+
         insertTaskIfNew(source, {
-          subject: `[DevRel] Build a Stacks sample app`,
+          subject: `[DevRel] Build: ${idea.topic}`,
           description: [
-            "Time to ship a new sample app. Choose based on what developers are asking about",
-            "(check recent community-check task results) or pick something from the latest stx-labs releases.",
+            `Build a focused sample app demonstrating: ${idea.topic}`,
+            `Template: ${idea.template}`,
             "",
-            "Workflow:",
-            "1. Pick a topic — something useful, something developers actually need",
-            "2. Scaffold: arc skills run --name stacks-dev -- scaffold --name <app-name> --template clarity",
-            "3. Build it — write Clarity contracts, write tests, make it work",
-            "4. Check: arc skills run --name stacks-dev -- check --project ~/clara-projects/<app-name>",
-            "5. Test: arc skills run --name stacks-dev -- test --project ~/clara-projects/<app-name>",
-            "6. Create GitHub repo: arc skills run --name github-repos -- create --name <app-name> --description '...'",
-            "7. Push: arc skills run --name github-repos -- push --name <app-name> --project ~/clara-projects/<app-name>",
-            "8. Queue a tutorial task:",
-            "   arc tasks add --subject '[DevRel] Write tutorial for <app-name>' --priority 4 --skills clara-site,social-x-posting",
+            "## Instructions",
             "",
-            "The sample app should be:",
-            "- Self-contained (clone → clarinet test works with no extra setup)",
-            "- Well-commented Clarity code",
-            "- Focused on ONE concept, not a kitchen sink",
-            "- Something a developer could actually build on top of",
+            "### 1. Scaffold",
+            `Pick a short repo name and scaffold:`,
+            `arc skills run --name stacks-dev -- scaffold --name <app-name> --template ${idea.template}`,
+            "",
+            "### 2. Build",
+            "Write the contracts/code. Keep it focused on ONE concept — not a kitchen sink.",
+            "Good sample apps are:",
+            "- Self-contained (clone → clarinet test passes with no extra setup)",
+            "- Well-commented — explain the WHY in comments, not just the WHAT",
+            "- Minimal — the least code that demonstrates the concept clearly",
+            "",
+            "### 3. Document friction as you go",
+            "Keep a running list in the task description or a NOTES.md in the project.",
+            "For every moment of confusion, ask:",
+            "  - Is this a docs problem? (missing example, wrong info, unclear explanation)",
+            "  - Is this a tooling problem? (Clarinet bug, stacks.js API gap)",
+            "  - Is this a design problem? (Clarity language limitation worth noting)",
+            "",
+            "### 4. Check + test",
+            "arc skills run --name stacks-dev -- check --project ~/clara-projects/<app-name>",
+            "arc skills run --name stacks-dev -- test --project ~/clara-projects/<app-name>",
+            "",
+            "### 5. Push to GitHub",
+            "arc skills run --name github-repos -- create --name <app-name> --description '...'",
+            "arc skills run --name github-repos -- push --name <app-name> --project ~/clara-projects/<app-name>",
+            "",
+            "### 6. File docs issues",
+            "For each friction point that was a docs problem, file an issue on stacks-network/docs:",
+            "arc skills run --name github-repos -- open-issue \\",
+            "  --repo stacks-network/docs \\",
+            "  --title 'docs: <what was missing or wrong>' \\",
+            "  --body 'What I was trying to do, what the docs said, what actually happened, suggested fix'",
+            "",
+            "### 7. Queue a tutorial",
+            "arc tasks add --subject '[DevRel] Write tutorial: <app-name>' --priority 4 --skills clara-site,social-x-posting --source task:<id>",
+            "",
+            "## Close with",
+            "- Repo URL",
+            "- List of friction points encountered",
+            "- Issues filed on stacks-network/docs (with URLs)",
           ].join("\n"),
-          skills: JSON.stringify(["stacks-dev", "github-repos", "clara-site"]),
-          priority: 4,
+          skills: JSON.stringify(["stacks-dev", "github-repos", "clara-site", "social-x-posting"]),
+          priority: 3,
           source,
         }, "any");
 
         state.last_build_task = new Date().toISOString();
         tasksCreated++;
-        log("queued: build task");
+        log(`queued: build task — ${idea.topic}`);
       }
     }
 
-    // ── 3. Weekly publish + doc issues ───────────────────────────────────
+    // ── 2. Weekly publish (every 7d) ──────────────────────────────────────
     if (hoursSince(state.last_weekly_task) >= CADENCE.weekly) {
       const source = `sensor:clara-devrel:weekly:${weekKey()}`;
       if (!pendingTaskExistsForSource(source)) {
         insertTaskIfNew(source, {
-          subject: `[DevRel] Weekly: publish tutorial + file docs issues`,
+          subject: `[DevRel] Weekly: publish learnings`,
           description: [
-            "Two things this week:",
+            "Publish what was built and learned this week.",
             "",
-            "## 1. Publish a Tutorial",
-            "Check for unpublished drafts: arc skills run --name clara-site -- list --status draft",
-            "Pick the most complete draft and publish it:",
-            "  arc skills run --name clara-site -- publish --id <post-id>",
-            "Cross-post to X — write a thread (3-5 posts) explaining the key insight:",
-            "  arc skills run --name social-x-posting -- post --text '...'",
+            "## 1. Write the tutorial",
+            "For the most interesting project built this week, write a full tutorial:",
+            "arc skills run --name clara-site -- create --title '...' --difficulty beginner --sample-repo <url>",
             "",
-            "If no draft is ready, write a short 'TIL' post about something discovered this week.",
+            "A good tutorial:",
+            "- Starts with what the reader will build (and links to the finished repo)",
+            "- Walks through the code step by step — not just a code dump",
+            "- Calls out gotchas and friction points explicitly",
+            "  ('I hit this error: X. Here's what it actually means and how to fix it.')",
+            "- Ends with what to explore next",
             "",
-            "## 2. File Documentation Issues",
-            "Review recent sample apps Clara built. For each one, check whether the corresponding",
-            "stx-labs docs are clear, complete, and have a working example.",
+            "Publish it: arc skills run --name clara-site -- publish --id <post-id>",
             "",
-            "For each gap found:",
-            "  arc skills run --name github-repos -- open-issue \\",
-            "    --repo stx-labs/<repo> \\",
-            "    --title 'docs: missing example for <topic>' \\",
-            "    --body 'Description of what is missing and a suggestion for fixing it.'",
+            "## 2. Post to X",
+            "Write a short thread (3-5 posts) about what was built:",
+            "- Post 1: What it is and why it's useful (hook)",
+            "- Post 2: The most interesting technical detail",
+            "- Post 3: A friction point that was hit and how it was resolved",
+            "- Post 4: Link to the repo + tutorial",
             "",
-            "Aim to file at least 1 substantive docs issue per week.",
+            "arc skills run --name social-x-posting -- post --text '...'",
             "",
-            "Close this task with: # tutorials published, # issues filed, links to each.",
+            "## 3. Review pending docs issues",
+            "Check if any stacks-network/docs issues filed this week need follow-up:",
+            "gh api 'repos/stacks-network/docs/issues?creator=ClaraDevRel&state=open' --jq '.[].title'",
           ].join("\n"),
-          skills: JSON.stringify(["clara-site", "github-repos", "social-x-posting"]),
+          skills: JSON.stringify(["clara-site", "social-x-posting", "github-repos"]),
           priority: 4,
           source,
         }, "any");
 
         state.last_weekly_task = new Date().toISOString();
         tasksCreated++;
-        log("queued: weekly task");
+        log("queued: weekly publish task");
       }
     }
 
-    // ── 4. Monthly docs quality sweep ────────────────────────────────────
+    // ── 3. Monthly friction review (every 30d) ────────────────────────────
     if (hoursSince(state.last_monthly_task) >= CADENCE.monthly) {
       const source = `sensor:clara-devrel:monthly:${monthKey()}`;
       if (!pendingTaskExistsForSource(source)) {
         insertTaskIfNew(source, {
-          subject: `[DevRel] Monthly docs quality sweep`,
+          subject: `[DevRel] Monthly friction review`,
           description: [
-            "Full review of stx-labs documentation quality. Rotate through repos each month.",
+            "Review a month of building. Look for patterns in the friction.",
             "",
-            "Repos to sweep (rotate — do 1-2 per month):",
-            "- stx-labs/clarinet (README, docs/, CHANGELOG)",
-            "- stx-labs/stacks.js (packages/*/README.md)",
-            "- stx-labs/clarity-starter (README, contracts, tests)",
-            "- stx-labs/stacks.js-starters (each template's README)",
+            "## 1. Review what was built",
+            "arc skills run --name stacks-dev -- list-projects",
+            "arc skills run --name github-repos -- list",
             "",
-            "For each doc page reviewed, check:",
-            "1. Install instructions — do they actually work?",
-            "2. Quickstart — can a new developer follow it in <10 minutes?",
-            "3. Full example — is there one? Does it run?",
-            "4. Troubleshooting — are common errors documented?",
-            "5. Stale content — any references to old APIs, deprecated flags, or wrong versions?",
+            "## 2. Review docs issues filed",
+            "gh api 'repos/stacks-network/docs/issues?creator=ClaraDevRel&state=open' --jq '[.[] | {number: .number, title: .title, created_at: .created_at}]'",
+            "gh api 'repos/stacks-network/docs/issues?creator=ClaraDevRel&state=closed' --jq '[.[] | {number: .number, title: .title}]'",
             "",
-            "For each issue found, file a GitHub issue with:",
-            "- Exact location (file, line if possible)",
-            "- What's missing or wrong",
-            "- A concrete suggestion for fixing it",
-            "- Label: 'documentation'",
+            "## 3. Identify friction patterns",
+            "Look across all the friction points from this month's builds. Ask:",
+            "- What concepts do the Stacks docs consistently fail to explain well?",
+            "- What errors come up repeatedly with no clear documentation?",
+            "- What sample apps are missing from the stx-labs starter ecosystem?",
+            "- What Clarity patterns are hard to discover without prior knowledge?",
             "",
-            "Also update Clara's MEMORY.md with any patterns found:",
-            "- 'The stx-labs docs consistently lack X'",
-            "- 'Developers are always confused about Y'",
+            "## 4. Update MEMORY.md",
+            "Add a section: '## Friction patterns (YYYY-MM)'",
+            "List the top 3-5 patterns with concrete examples.",
+            "This informs what to build and document next month.",
             "",
-            "Close this task with: repos reviewed, issues filed, patterns noted.",
+            "## 5. File any remaining issues",
+            "If any friction points from this month haven't been filed yet, file them now.",
+            "Batch-filing at month-end is fine for minor issues.",
+            "",
+            "## Close with",
+            "- Projects built this month: N",
+            "- Tutorials published: N",
+            "- Docs issues filed: N (open: N, closed/fixed: N)",
+            "- Top friction pattern summary",
           ].join("\n"),
-          skills: JSON.stringify(["github-repos", "clara-devrel"]),
+          skills: JSON.stringify(["github-repos", "clara-devrel", "stacks-dev"]),
           priority: 3,
           source,
         }, "any");
 
         state.last_monthly_task = new Date().toISOString();
         tasksCreated++;
-        log("queued: monthly docs sweep");
+        log("queued: monthly friction review");
       }
     }
 

@@ -23,21 +23,19 @@ Drives Clara's continuous learning cycle. Watches stx-labs repos for new release
 
 ## Watched Repos
 
+Release monitoring only. Issue scanning was removed — Clara generates her own signal by building.
+
 | Repo | Signal |
 |------|--------|
-| `stx-labs/clarinet` | New releases → "explore clarinet X.Y" task |
-| `stx-labs/stacks.js` | New releases → "explore stacks.js X.Y" task |
-| `stx-labs/clarity-starter` | New commits → "update clarity-starter tutorial" |
-| `stx-labs/stacks.js-starters` | New commits → "update starters guide" |
-| `stx-labs/vitest-environment-clarinet` | New releases → "update testing guide" |
+| `stx-labs/clarinet` | New releases → explore + build task |
+| `stx-labs/stacks.js` | New releases → explore + build task |
+| `stx-labs/vitest-environment-clarinet` | New releases → explore + build task |
 
 ## Task Shapes Created
 
 | Trigger | Subject | Priority | Skills |
 |---------|---------|----------|--------|
-| New release | `[stacks-learning] Explore <repo> <version> — build sample app` | 3 | `stacks-dev,github-repos,clara-site` |
-| Open issue | `[stacks-learning] Address docs issue: <title>` | 4 | `github-repos` |
-| Build cadence | `[stacks-learning] Build something new on Stacks` | 5 | `stacks-dev,github-repos,clara-site` |
+| New release | `[stacks-learning] Explore <repo> <version>` | 3 | `stacks-dev,github-repos,clara-site,social-x-posting` |
 
 ## State
 

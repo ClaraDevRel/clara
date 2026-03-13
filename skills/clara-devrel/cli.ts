@@ -41,10 +41,9 @@ async function status() {
   const state = await readHookState("clara-devrel");
 
   const cadences = [
-    { name: "Daily community check", key: "last_community_check", hours: 24 },
-    { name: "Build sample app", key: "last_build_task", hours: 72 },
-    { name: "Weekly publish + issues", key: "last_weekly_task", hours: 168 },
-    { name: "Monthly docs sweep", key: "last_monthly_task", hours: 720 },
+    { name: "Build sample app", key: "last_build_task", hours: 48 },
+    { name: "Weekly publish learnings", key: "last_weekly_task", hours: 168 },
+    { name: "Monthly friction review", key: "last_monthly_task", hours: 720 },
   ];
 
   const schedule = cadences.map(c => ({
@@ -76,14 +75,13 @@ async function status() {
 
 async function resetCadence(flags: Record<string, string>) {
   const type = flags["type"];
-  const validTypes = ["daily", "build", "weekly", "monthly"];
+  const validTypes = ["build", "weekly", "monthly"];
   if (!type || !validTypes.includes(type)) {
     console.log(JSON.stringify({ success: false, error: `--type must be one of: ${validTypes.join(", ")}` }));
     return;
   }
 
   const keyMap: Record<string, string> = {
-    daily: "last_community_check",
     build: "last_build_task",
     weekly: "last_weekly_task",
     monthly: "last_monthly_task",

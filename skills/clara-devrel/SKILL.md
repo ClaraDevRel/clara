@@ -1,6 +1,6 @@
 ---
 name: clara-devrel
-description: Clara's DevRel master loop — structured daily, weekly, and monthly tasks for community monitoring, building, publishing, and docs improvement
+description: Clara's DevRel loop — continuously pick projects, build them, document friction, file issues on stacks-network/docs, write about learnings
 updated: 2026-03-13
 tags:
   - devrel
@@ -11,87 +11,72 @@ tags:
 
 # clara-devrel
 
-Orchestrates Clara's full DevRel work cycle. Where `stacks-learning` is reactive (fires on signals), this skill is proactive — it ensures all parts of the DevRel loop happen on a predictable cadence regardless of external signals.
+Clara's core work loop. The philosophy: **build constantly, document everything, file issues when docs fail you**.
 
-## The DevRel Loop
+Clara is the developer. Her own experience building on Stacks is the signal. When something is confusing, that becomes a docs issue. When something is missing, that becomes a sample app. Community monitoring is not the job — building is.
+
+## The Loop
 
 ```
-Monitor → Build → Document → Publish → Improve
-   ↑                                       |
-   └───────────────────────────────────────┘
+Pick a project → Build it → Hit friction → Document friction
+      ↑               ↓            ↓               ↓
+      └───────── Write about it ←──┘    File issue on stacks-network/docs
 ```
 
-| Cadence | Work | Output |
-|---------|------|--------|
-| Daily | Community check: Discord, GitHub discussions, forums | Noted pain points, draft responses |
-| 3×/week | Build a sample app or improve an existing one | New/updated repo on ClaraDevRel |
-| Weekly | Publish a tutorial + file doc improvement issues | Blog post, GitHub issues on stx-labs repos |
-| Monthly | Docs quality sweep + learning priorities review | Batch of issues, updated MEMORY.md |
+1. **Pick** — choose something to build: a Clarity pattern, a Stacks.js use case, a DeFi interaction, an NFT contract, anything interesting
+2. **Build** — scaffold with Clarinet, write the contract, write tests, make it work
+3. **Document friction** — keep a running log of anything confusing, broken, or underdocumented during the build
+4. **File issues** — for each friction point that's a docs problem, open an issue on `stacks-network/docs`
+5. **Write** — publish a tutorial or post about what was built and what was learned; post to X
 
-## Sensor Behavior
+## Sensor Cadences
 
-Runs every 60 minutes, self-gates to appropriate cadence per task type:
+| Task | Every | Priority | Skills |
+|------|-------|----------|--------|
+| Pick + build a project | 48h | 3 | `stacks-dev,github-repos,clara-site,social-x-posting` |
+| Publish learnings | 7d | 4 | `clara-site,social-x-posting` |
+| Monthly friction review | 30d | 3 | `github-repos,clara-devrel` |
 
-| Task Type | Cadence | Priority | Skills Loaded |
-|-----------|---------|----------|---------------|
-| Daily community check | 24h | 5 | `clara-devrel` |
-| Build task | 72h | 4 | `stacks-dev,github-repos,clara-site` |
-| Weekly publish + issues | 7d | 4 | `clara-site,github-repos,social-x-posting` |
-| Monthly docs sweep | 30d | 3 | `github-repos,clara-site` |
+## Issue Filing
+
+All documentation friction goes to **`stacks-network/docs`**, not individual tool repos.
+
+```
+arc skills run --name github-repos -- open-issue \
+  --repo stacks-network/docs \
+  --title "docs: <clear description of what's missing or wrong>" \
+  --body "<what you were trying to do, what the docs said, what actually happened, suggested fix>"
+```
+
+Good issue titles:
+- `docs: no example for ft-transfer with memo`
+- `docs: clarinet test output format not documented`
+- `docs: stacks.js makeContractCall missing error handling example`
 
 ## CLI Commands
 
 ```
 arc skills run --name clara-devrel -- status
-arc skills run --name clara-devrel -- community-check
-arc skills run --name clara-devrel -- plan-week
-arc skills run --name clara-devrel -- docs-sweep [--repo <owner/repo>]
-arc skills run --name clara-devrel -- x-post --topic <text>
-arc skills run --name clara-devrel -- reset-cadence --type daily|build|weekly|monthly
+arc skills run --name clara-devrel -- reset-cadence --type build|weekly|monthly
 ```
-
-## Community Check
-
-Scans for developer pain points:
-- GitHub Discussions on `stx-labs/clarinet`, `stx-labs/stacks.js`
-- Open issues labeled `question` or `help wanted`
-- X search for "clarinet", "clarity lang", "stacks.js" developer questions
-
-Output: a structured list of pain points → informs what to build next.
-
-## Docs Sweep
-
-For a given repo, checks:
-- README completeness (does it have: install, quickstart, full example, troubleshooting?)
-- Are all CLI flags documented?
-- Do code examples actually work? (checked by running them through Clarinet)
-- Are there any TODOs or placeholder text left in docs?
-
-Files GitHub issues for each gap found.
 
 ## State
 
 `db/hook-state/clara-devrel.json`:
 ```json
 {
-  "last_community_check": "2026-03-13T00:00:00Z",
   "last_build_task": "2026-03-13T00:00:00Z",
   "last_weekly_task": "2026-03-10T00:00:00Z",
   "last_monthly_task": "2026-03-01T00:00:00Z"
 }
 ```
 
-## Integration with Other Skills
+## What Good Output Looks Like
 
-This skill orchestrates — it creates tasks that load the specialist skills:
+Each build cycle should produce:
+- A repo on `ClaraDevRel` GitHub with working, tested code
+- At least one filed issue on `stacks-network/docs` (if any friction was hit)
+- A tutorial or blog post on the clara-site
+- A short X thread summarizing what was built and learned
 
-| Goal | Skills loaded in task |
-|------|-----------------------|
-| Build + push sample app | `stacks-dev`, `github-repos` |
-| Write + publish tutorial | `clara-site`, `social-x-posting` |
-| File doc issues | `github-repos` |
-| Community engagement | `social-x-posting` |
-
-## When to Load
-
-Loaded automatically by sensor-created tasks. Also load manually when reviewing Clara's DevRel status or resetting cadence timers after a break.
+Over time, the collection of repos becomes a reference library. The filed issues improve the official docs. The tutorials lower the barrier for the next developer.
