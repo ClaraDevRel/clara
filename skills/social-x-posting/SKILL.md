@@ -23,12 +23,14 @@ Post and manage tweets on X (Twitter) using the v2 API with OAuth 1.0a authentic
 | `unlike --tweet-id <id>` | Unlike a tweet |
 | `retweet --tweet-id <id>` | Retweet a tweet |
 | `unretweet --tweet-id <id>` | Undo a retweet |
-| `timeline [--limit <n>]` | Show recent tweets from arc0btc (default: 10) |
+| `timeline [--limit <n>]` | Show recent tweets (default: 10) |
 | `mentions [--limit <n>]` | Show recent mentions (default: 10) |
 | `search --query <text> [--limit <n>]` | Search recent tweets (10-100, default: 10) |
 | `lookup --username <handle>` | Look up a user by username |
 | `budget` | Show daily action budget usage and remaining |
 | `status` | Check credential status and account info |
+
+All commands accept `--account <service>` to select which credential set to use. Default is `x` (Arc's account). Clara uses `--account clara-x`.
 
 ## Daily Budget
 

@@ -10,6 +10,9 @@ const CACHE_PATH = join(import.meta.dir, "../../db/x-cache.json");
 const BUDGET_PATH = join(import.meta.dir, "../../db/x-budget.json");
 const CREDITS_DEPLETED_PATH = join(import.meta.dir, "../../db/x-credits-depleted.json");
 
+// Active credential service — set in main() via --account flag (default: "x")
+let CREDS_SERVICE = "x";
+
 const CREDITS_DEPLETED_TTL_DAYS = 30;
 
 // ---- Credits Depleted Gate ----
@@ -205,21 +208,21 @@ interface OAuthCreds {
   accessTokenSecret: string;
 }
 
-async function loadCreds(): Promise<OAuthCreds> {
-  const apiKey = await getCredential("x", "consumer_key");
-  const apiSecret = await getCredential("x", "consumer_secret");
-  const accessToken = await getCredential("x", "access_token");
-  const accessTokenSecret = await getCredential("x", "access_token_secret");
+async function loadCreds(service = CREDS_SERVICE): Promise<OAuthCreds> {
+  const apiKey = await getCredential(service, "consumer_key");
+  const apiSecret = await getCredential(service, "consumer_secret");
+  const accessToken = await getCredential(service, "access_token");
+  const accessTokenSecret = await getCredential(service, "access_token_secret");
 
   if (!apiKey || !apiSecret || !accessToken || !accessTokenSecret) {
     const missing: string[] = [];
-    if (!apiKey) missing.push("x/consumer_key");
-    if (!apiSecret) missing.push("x/consumer_secret");
-    if (!accessToken) missing.push("x/access_token");
-    if (!accessTokenSecret) missing.push("x/access_token_secret");
+    if (!apiKey) missing.push(`${service}/consumer_key`);
+    if (!apiSecret) missing.push(`${service}/consumer_secret`);
+    if (!accessToken) missing.push(`${service}/access_token`);
+    if (!accessTokenSecret) missing.push(`${service}/access_token_secret`);
     throw new Error(
       `Missing X credentials: ${missing.join(", ")}. ` +
-        `Set them with: arc creds set --service x --key <key> --value <value>`
+        `Set them with: arc creds set --service ${service} --key <key> --value <value>`
     );
   }
 
@@ -701,6 +704,8 @@ async function main(): Promise<void> {
   const command = args[0];
   const flags = parseFlags(args.slice(1));
 
+  if (flags["account"]) CREDS_SERVICE = flags["account"];
+
   switch (command) {
     case "post":
       await cmdPost(flags);
@@ -762,11 +767,14 @@ Commands:
 Daily budget limits (resets at midnight UTC):
   10 posts, 40 replies, 50 likes, 15 retweets, 20 follows
 
-Credentials required (set via arc creds set --service x --key <key> --value <value>):
-  x/consumer_key         OAuth 1.0a Consumer Key
-  x/consumer_secret      OAuth 1.0a Consumer Secret
-  x/access_token         User Access Token
-  x/access_token_secret  User Access Token Secret
+Global flags:
+  --account <service>  Credential service name (default: "x"). Use "clara-x" for Clara's account.
+
+Credentials required (set via arc creds set --service <account> --key <key> --value <value>):
+  consumer_key         OAuth 1.0a Consumer Key
+  consumer_secret      OAuth 1.0a Consumer Secret
+  access_token         User Access Token
+  access_token_secret  User Access Token Secret
 
 Get credentials from https://developer.x.com/`);
       break;
