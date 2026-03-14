@@ -17,7 +17,7 @@ const INTERVAL_MINUTES = 5;
 const TASK_SOURCE = "sensor:aibtc-heartbeat";
 const HEARTBEAT_URL = "https://aibtc.com/api/heartbeat";
 
-const SKILLS_ROOT = resolve(import.meta.dir, "../../github/aibtcdev/skills");
+const SKILLS_ROOT = resolve(import.meta.dir, "../..");
 const SIGN_RUNNER = resolve(import.meta.dir, "../bitcoin-wallet/sign-runner.ts");
 
 const log = createSensorLogger(SENSOR_NAME);

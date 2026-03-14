@@ -90,6 +90,17 @@ const IDENTITIES: Record<string, AgentIdentity> = {
     website: "",
     btc: "bc1q9hme5ayrtqd4s75dqq82g8ezzlhfj2m9efjz4h",
   },
+  clara: {
+    name: "clara",
+    bns: "",
+    btc_segwit: "bc1qjj6nnd4ngpw2l84fynhal0wzwxfzmnltuw2884",
+    btc_taproot: "bc1p48m8kcslufm2sacarf7hwgs2su6hlrlucx5y7v6j93p6upxpcads3j6zsk",
+    stx: "SP3VEEQCQ55RQAJ8TZ7672QSDX7BHEXJEC92W6MPK",
+    github: "",
+    twitter: "ClaraDevRel",
+    website: "",
+    btc: "bc1qjj6nnd4ngpw2l84fynhal0wzwxfzmnltuw2884",
+  },
 };
 
 function detectAgent(): string {
@@ -104,7 +115,7 @@ function detectAgent(): string {
   for (const key of Object.keys(IDENTITIES)) {
     if (h.startsWith(key)) return key;
   }
-  return "arc0"; // fallback
+  return "clara"; // this machine is Clara's
 }
 
 export const AGENT_NAME: string = detectAgent();
