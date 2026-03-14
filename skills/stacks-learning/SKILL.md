@@ -29,6 +29,7 @@ Release monitoring only. Issue scanning was removed — Clara generates her own 
 |------|--------|
 | `stx-labs/clarinet` | New releases → explore + build task |
 | `stx-labs/stacks.js` | New releases → explore + build task |
+| `stx-labs/connect` | New releases → explore + build task |
 | `stx-labs/vitest-environment-clarinet` | New releases → explore + build task |
 
 ## Task Shapes Created

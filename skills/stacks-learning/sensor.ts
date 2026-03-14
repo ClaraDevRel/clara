@@ -19,6 +19,7 @@ const log = createSensorLogger(SENSOR_NAME);
 const RELEASE_REPOS = [
   "stx-labs/clarinet",
   "stx-labs/stacks.js",
+  "stx-labs/connect",
   "stx-labs/vitest-environment-clarinet",
 ] as const;
 

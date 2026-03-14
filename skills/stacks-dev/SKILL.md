@@ -69,6 +69,30 @@ Scaffolded projects live under `~/clara-projects/<app-name>/`:
 
 Requests testnet STX from the Stacks testnet faucet. STX arrives within ~1 block. Limited to 1 request per address per day.
 
+## @stacks/connect v8
+
+All frontend scaffolds use `@stacks/connect` v8. Key API changes from v7:
+
+```ts
+// Connect to wallet (replaces showConnect / authenticate)
+import { connect, disconnect, isConnected, request } from '@stacks/connect';
+await connect();
+
+// Contract call (replaces openContractCall / doContractCall)
+await request('stx_callContract', { contract: 'SP...foo', functionName: 'bar', functionArgs: [] });
+
+// Deploy (replaces openContractDeploy)
+await request('stx_deployContract', { name: 'my-contract', clarityCode: '...' });
+
+// Sign message (replaces openSignMessage)
+await request('stx_signMessage', { message: 'hello' });
+```
+
+Deprecated and must NOT be used: `UserSession`, `AppConfig`, `showConnect`, `openXyz`, `doXyz`,
+`onFinish`/`onCancel` callbacks, `@stacks/connect-react`.
+
+Reference: `stx-labs/connect` (current: v8.2.6)
+
 ## Dependencies
 
 - `clarinet` binary (v3.15.0, from `stx-labs/clarinet`) — installed at `/usr/local/bin/clarinet`
