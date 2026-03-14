@@ -186,53 +186,72 @@ async function deploySite() {
   const token = await getCredential("clara-netlify", "token");
   if (!token) { console.log(JSON.stringify({ success: false, error: "Missing clara-netlify/token credential" })); return; }
 
-  // Check if site already exists
   let siteState: Record<string, unknown> = {};
   try {
     if (existsSync(SITE_STATE)) siteState = await Bun.file(SITE_STATE).json() as Record<string, unknown>;
   } catch { /* ignore */ }
 
-  if (!siteState["site_id"]) {
-    // Create Netlify site connected to GitHub repo
-    log("Creating Netlify site...");
-    const res = await fetch(`${NETLIFY_API}/sites`, {
-      method: "POST",
-      headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: "clara-devrel",
-        repo: {
-          provider: "github",
-          repo: `${GITHUB_USERNAME}/${GITHUB_REPO}`,
-          branch: "main",
-          cmd: "echo 'no build command'",
-          dir: "content",
-        },
-      }),
-    });
-    const data = await res.json() as Record<string, unknown>;
-    if (!res.ok) { console.log(JSON.stringify({ success: false, error: data })); return; }
+  const siteId = siteState["site_id"] as string | undefined;
+  if (!siteId) { console.log(JSON.stringify({ success: false, error: "No site_id in hook state. Site must be created first." })); return; }
 
-    siteState["site_id"] = data["id"];
-    siteState["site_url"] = data["ssl_url"] || data["url"];
-    mkdirSync(dirname(SITE_STATE), { recursive: true });
-    await Bun.write(SITE_STATE, JSON.stringify(siteState, null, 2));
-    log(`Site created: ${siteState["site_url"]}`);
+  // Build the site
+  log("Building Astro site...");
+  const build = Bun.spawnSync(["bun", "run", "build"], { cwd: SITE_REPO_DIR });
+  if (build.exitCode !== 0) {
+    console.log(JSON.stringify({ success: false, error: `Build failed: ${build.stderr.toString().slice(-500)}` }));
+    return;
   }
 
-  // Trigger a manual deploy
-  const siteId = siteState["site_id"] as string;
+  const distDir = join(SITE_REPO_DIR, "dist");
+  const { createHash } = await import("crypto");
+  const { readdirSync, readFileSync } = await import("fs");
+
+  function walkDir(dir: string): string[] {
+    const results: string[] = [];
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = join(dir, entry.name);
+      if (entry.isDirectory()) results.push(...walkDir(full));
+      else results.push(full);
+    }
+    return results;
+  }
+
+  const files = walkDir(distDir);
+  const fileMap: Record<string, string> = {};
+  const buffers: Record<string, Buffer> = {};
+
+  for (const f of files) {
+    const rel = "/" + f.replace(distDir, "").replace(/\\/g, "/");
+    const buf = Buffer.from(readFileSync(f));
+    fileMap[rel] = createHash("sha1").update(buf).digest("hex");
+    buffers[rel] = buf;
+  }
+
+  // Create deploy
   const deployRes = await fetch(`${NETLIFY_API}/sites/${siteId}/deploys`, {
     method: "POST",
     headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify({}),
+    body: JSON.stringify({ files: fileMap }),
   });
-  const deployData = await deployRes.json() as Record<string, unknown>;
+  const deploy = await deployRes.json() as { id: string; required: string[]; state: string; ssl_url?: string };
+  if (!deployRes.ok) { console.log(JSON.stringify({ success: false, error: deploy })); return; }
+
+  // Upload required files
+  for (const hash of (deploy.required ?? [])) {
+    const path = Object.keys(fileMap).find(p => fileMap[p] === hash);
+    if (!path) continue;
+    await fetch(`${NETLIFY_API}/deploys/${deploy.id}/files${path}`, {
+      method: "PUT",
+      headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/octet-stream" },
+      body: buffers[path],
+    });
+  }
 
   console.log(JSON.stringify({
-    success: deployRes.ok,
+    success: true,
     site_url: siteState["site_url"],
-    deploy_id: deployData["id"],
-    deploy_state: deployData["state"],
+    deploy_id: deploy.id,
+    files_uploaded: deploy.required?.length ?? 0,
   }));
 }
 
