@@ -1,7 +1,7 @@
 // skills/clara-devrel/sensor.ts
 // Clara's DevRel master loop.
-// Proactively queues build, publish, and review tasks on a predictable cadence.
-// Clara is the developer — her own building experience is the signal, not community monitoring.
+// Queues build, publish, and review tasks on a predictable cadence.
+// Project ideas come from Clara's own research — not a static pool.
 
 import {
   claimSensorRun,
@@ -18,8 +18,8 @@ const log = createSensorLogger(SENSOR_NAME);
 
 const CADENCE = {
   build: 48,        // build something every 2 days
-  weekly: 7 * 24,   // publish learnings every week
-  monthly: 30 * 24, // friction review every month
+  weekly: 7 * 24,   // publish learnings weekly
+  monthly: 30 * 24, // friction review monthly
 } as const;
 
 interface DevRelState {
@@ -30,20 +30,6 @@ interface DevRelState {
   last_weekly_task: string | null;
   last_monthly_task: string | null;
 }
-
-// Project ideas pool — rotated through to keep builds varied
-const PROJECT_IDEAS = [
-  { topic: "SIP-010 fungible token with a vesting schedule", template: "clarity", tags: "clarity,tokens,sip-010" },
-  { topic: "SIP-009 NFT with on-chain metadata stored in Clarity maps", template: "clarity", tags: "clarity,nft,sip-009" },
-  { topic: "Simple DAO: proposal + vote + execute pattern", template: "clarity", tags: "clarity,dao,governance" },
-  { topic: "Multi-sig wallet contract with time-locked execution", template: "clarity", tags: "clarity,multisig,security" },
-  { topic: "Stacks.js + Next.js app: connect wallet, read contract, call function", template: "nextjs", tags: "stacks.js,nextjs,frontend" },
-  { topic: "sBTC deposit + Clarity contract interaction end-to-end", template: "clarity", tags: "sbtc,clarity,bitcoin" },
-  { topic: "Stacking rewards tracker using read-only Clarity calls", template: "nextjs", tags: "stacking,pox,stacks.js" },
-  { topic: "Token swap contract using atomic STX-to-token exchange", template: "clarity", tags: "defi,tokens,atomic-swap" },
-  { topic: "BNS name lookup and registration via Stacks.js", template: "nextjs", tags: "bns,stacks.js,identity" },
-  { topic: "Contract-controlled escrow with dispute resolution", template: "clarity", tags: "clarity,escrow,defi" },
-] as const;
 
 function hoursSince(iso: string | null): number {
   if (!iso) return Infinity;
@@ -63,12 +49,6 @@ function weekKey(): string {
 
 function monthKey(): string {
   return new Date().toISOString().slice(0, 7);
-}
-
-// Pick a project idea based on day of year to rotate variety
-function pickProjectIdea() {
-  const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000);
-  return PROJECT_IDEAS[dayOfYear % PROJECT_IDEAS.length];
 }
 
 export default async function claraDevRelSensor(): Promise<string> {
@@ -93,56 +73,97 @@ export default async function claraDevRelSensor(): Promise<string> {
     if (hoursSince(state.last_build_task) >= CADENCE.build) {
       const source = `sensor:clara-devrel:build:${todayKey()}`;
       if (!pendingTaskExistsForSource(source)) {
-        const idea = pickProjectIdea();
-
         insertTaskIfNew(source, {
-          subject: `[DevRel] Build: ${idea.topic}`,
+          subject: `[DevRel] Research → pick → build a Stacks project`,
           description: [
-            `Build a focused sample app demonstrating: ${idea.topic}`,
-            `Template: ${idea.template}`,
+            "This is a two-phase task. Phase 1 is research. Phase 2 is building.",
+            "Do not skip Phase 1. The quality of what gets built depends on the quality of what gets researched.",
             "",
-            "## Instructions",
+            "## Phase 1: Research (find something genuinely worth building)",
             "",
-            "### 1. Scaffold",
-            `Pick a short repo name and scaffold:`,
-            `arc skills run --name stacks-dev -- scaffold --name <app-name> --template ${idea.template}`,
+            "Explore across these dimensions. Use WebSearch, WebFetch, and gh to gather signal.",
             "",
-            "### 2. Build",
-            "Write the contracts/code. Keep it focused on ONE concept — not a kitchen sink.",
-            "Good sample apps are:",
-            "- Self-contained (clone → clarinet test passes with no extra setup)",
-            "- Well-commented — explain the WHY in comments, not just the WHAT",
-            "- Minimal — the least code that demonstrates the concept clearly",
+            "### Bitcoin + Stacks protocol landscape",
+            "- What SIPs are active, recently passed, or in discussion?",
+            "  gh api repos/stacksgov/sips/contents/sips --jq '[.[] | select(.name | startswith(\"sip-\"))] | .[-5:][].name'",
+            "- What changed in recent Stacks core releases?",
+            "  gh api repos/stx-labs/stacks-core/releases --jq '.[0:3] | .[] | {tag: .tag_name, body: .body}'",
+            "- What's happening with sBTC? Is the peg live? Any new capabilities?",
+            "- What does the PoX/stacking landscape look like — any new primitives?",
             "",
-            "### 3. Document friction as you go",
-            "Keep a running list in the task description or a NOTES.md in the project.",
-            "For every moment of confusion, ask:",
-            "  - Is this a docs problem? (missing example, wrong info, unclear explanation)",
-            "  - Is this a tooling problem? (Clarinet bug, stacks.js API gap)",
-            "  - Is this a design problem? (Clarity language limitation worth noting)",
+            "### Broader tech intersections",
+            "Search for what's being built at the intersection of:",
+            "- AI agents + crypto: agent wallets, agent-to-agent payments, autonomous on-chain agents",
+            "- Bitcoin as a data layer: inscriptions beyond PFPs, programmable metadata, indexers",
+            "- DePIN (Decentralized Physical Infrastructure): what makes sense on Bitcoin L2?",
+            "- ZK proofs on Bitcoin: what's possible today, what's coming?",
+            "- Identity and attestation: on-chain credentials, verifiable claims, BNS as identity",
+            "- Cross-chain: what's being built that bridges Bitcoin to other ecosystems?",
             "",
-            "### 4. Check + test",
+            "### What's being built on Stacks right now",
+            "- Scan recent GitHub activity: gh api repos/stx-labs/clarinet/issues --jq '[.[0:10] | .[].title]'",
+            "- Look at recent Stacks explorer activity for interesting contracts being deployed",
+            "- Check what the aibtc ecosystem is building (aibtcdev GitHub org)",
+            "",
+            "### What's working elsewhere that doesn't exist on Stacks",
+            "Search for interesting primitives on Ethereum/Solana that haven't been built on Bitcoin L2:",
+            "- Reputation systems, trust scores, on-chain history as credential",
+            "- Agent authentication via NFTs or SBTs (non-transferable tokens as identity proof)",
+            "- Programmable escrow with oracle-triggered resolution",
+            "- Subscription/streaming payment contracts",
+            "- On-chain game state and turn-based mechanics in Clarity",
+            "",
+            "### What to avoid",
+            "- PFP NFT collections (saturated, declining interest)",
+            "- Simple token launches with no mechanism design",
+            "- Anything that's already well-documented in stx-labs examples",
+            "- Copying existing dapps 1:1 without a novel angle",
+            "",
+            "## Phase 1 Output",
+            "Before building anything, write a short brief:",
+            "- What you found that's interesting",
+            "- The specific project you chose and why",
+            "- What makes it worth building NOW (timely, novel, or fills a real gap)",
+            "- Which template makes sense (clarity / nextjs / react-vite)",
+            "- What you expect to be hardest (where friction will likely be)",
+            "",
+            "## Phase 2: Build",
+            "",
+            "### Scaffold",
+            "arc skills run --name stacks-dev -- scaffold --name <app-name> --template <template>",
+            "",
+            "### Build it",
+            "Write the contracts/code. Keep scope tight — one clear concept done well.",
+            "Comment the WHY, not just the WHAT. A developer reading this cold should understand",
+            "the design decisions, not just the mechanics.",
+            "",
+            "### Document friction as you go",
+            "Every time something is confusing, missing from docs, or surprising — note it.",
+            "These become docs issues and tutorial content.",
+            "",
+            "### Check + test",
             "arc skills run --name stacks-dev -- check --project ~/clara-projects/<app-name>",
             "arc skills run --name stacks-dev -- test --project ~/clara-projects/<app-name>",
             "",
-            "### 5. Push to GitHub",
-            "arc skills run --name github-repos -- create --name <app-name> --description '...'",
+            "### Push to GitHub",
+            "arc skills run --name github-repos -- create --name <app-name> --description '<one sentence>'",
             "arc skills run --name github-repos -- push --name <app-name> --project ~/clara-projects/<app-name>",
             "",
-            "### 6. File docs issues",
-            "For each friction point that was a docs problem, file an issue on stacks-network/docs:",
+            "### File docs issues",
+            "For each friction point that's a docs problem:",
             "arc skills run --name github-repos -- open-issue \\",
             "  --repo stacks-network/docs \\",
             "  --title 'docs: <what was missing or wrong>' \\",
-            "  --body 'What I was trying to do, what the docs said, what actually happened, suggested fix'",
+            "  --body '<what you tried, what the docs said, what actually happened, suggested fix>'",
             "",
-            "### 7. Queue a tutorial",
-            "arc tasks add --subject '[DevRel] Write tutorial: <app-name>' --priority 4 --skills clara-site,social-x-posting --source task:<id>",
+            "### Queue a tutorial",
+            "arc tasks add --subject '[DevRel] Write tutorial: <app-name>' --priority 4 --skills clara-site,social-x-posting",
             "",
             "## Close with",
+            "- The research brief (what you found and why you picked this project)",
             "- Repo URL",
-            "- List of friction points encountered",
-            "- Issues filed on stacks-network/docs (with URLs)",
+            "- Friction points encountered",
+            "- Issues filed on stacks-network/docs",
           ].join("\n"),
           skills: JSON.stringify(["stacks-dev", "github-repos", "clara-site", "social-x-posting"]),
           priority: 3,
@@ -151,7 +172,7 @@ export default async function claraDevRelSensor(): Promise<string> {
 
         state.last_build_task = new Date().toISOString();
         tasksCreated++;
-        log(`queued: build task — ${idea.topic}`);
+        log("queued: research + build task");
       }
     }
 
@@ -169,26 +190,26 @@ export default async function claraDevRelSensor(): Promise<string> {
             "arc skills run --name clara-site -- create --title '...' --difficulty beginner --sample-repo <url>",
             "",
             "A good tutorial:",
-            "- Starts with what the reader will build (and links to the finished repo)",
-            "- Walks through the code step by step — not just a code dump",
-            "- Calls out gotchas and friction points explicitly",
-            "  ('I hit this error: X. Here's what it actually means and how to fix it.')",
-            "- Ends with what to explore next",
+            "- Opens with what the reader will build and why it matters (not 'in this tutorial we will...')",
+            "- Links to the finished repo upfront",
+            "- Walks through the code step by step — explains design decisions, not just syntax",
+            "- Names the gotchas. 'I hit this error: X. Here's what it actually means.'",
+            "- Ends with what this unlocks — what can a developer build on top of this?",
             "",
-            "Publish it: arc skills run --name clara-site -- publish --id <post-id>",
+            "Publish: arc skills run --name clara-site -- publish --id <post-id>",
             "",
             "## 2. Post to X",
-            "Write a short thread (3-5 posts) about what was built:",
-            "- Post 1: What it is and why it's useful (hook)",
-            "- Post 2: The most interesting technical detail",
-            "- Post 3: A friction point that was hit and how it was resolved",
-            "- Post 4: Link to the repo + tutorial",
+            "Write a short thread about what was built and what was interesting about it:",
+            "- Hook: the problem or question that led to this build",
+            "- The most surprising or counterintuitive thing discovered",
+            "- A concrete friction point and how it was resolved (this is real signal for the community)",
+            "- Link to the repo + tutorial",
             "",
             "arc skills run --name social-x-posting -- post --text '...'",
             "",
-            "## 3. Review pending docs issues",
-            "Check if any stacks-network/docs issues filed this week need follow-up:",
-            "gh api 'repos/stacks-network/docs/issues?creator=ClaraDevRel&state=open' --jq '.[].title'",
+            "## 3. Check open docs issues",
+            "gh api 'repos/stacks-network/docs/issues?creator=ClaraDevRel&state=open' --jq '[.[] | {number, title}]'",
+            "Comment on any that have been resolved by the week's build work.",
           ].join("\n"),
           skills: JSON.stringify(["clara-site", "social-x-posting", "github-repos"]),
           priority: 4,
@@ -206,39 +227,42 @@ export default async function claraDevRelSensor(): Promise<string> {
       const source = `sensor:clara-devrel:monthly:${monthKey()}`;
       if (!pendingTaskExistsForSource(source)) {
         insertTaskIfNew(source, {
-          subject: `[DevRel] Monthly friction review`,
+          subject: `[DevRel] Monthly: friction review + research recalibration`,
           description: [
-            "Review a month of building. Look for patterns in the friction.",
+            "Two things: look back at a month of friction, and look forward at what's worth exploring next.",
             "",
             "## 1. Review what was built",
             "arc skills run --name stacks-dev -- list-projects",
             "arc skills run --name github-repos -- list",
             "",
             "## 2. Review docs issues filed",
-            "gh api 'repos/stacks-network/docs/issues?creator=ClaraDevRel&state=open' --jq '[.[] | {number: .number, title: .title, created_at: .created_at}]'",
-            "gh api 'repos/stacks-network/docs/issues?creator=ClaraDevRel&state=closed' --jq '[.[] | {number: .number, title: .title}]'",
+            "gh api 'repos/stacks-network/docs/issues?creator=ClaraDevRel&state=open' --jq '[.[] | {number, title, created_at}]'",
+            "gh api 'repos/stacks-network/docs/issues?creator=ClaraDevRel&state=closed' --jq '[.[] | {number, title}]'",
             "",
-            "## 3. Identify friction patterns",
-            "Look across all the friction points from this month's builds. Ask:",
-            "- What concepts do the Stacks docs consistently fail to explain well?",
-            "- What errors come up repeatedly with no clear documentation?",
-            "- What sample apps are missing from the stx-labs starter ecosystem?",
-            "- What Clarity patterns are hard to discover without prior knowledge?",
+            "## 3. Friction pattern analysis",
+            "Across all this month's builds, look for patterns:",
+            "- What concepts does Clarity make harder than they should be?",
+            "- What Stacks.js APIs are consistently missing examples?",
+            "- What assumptions do the docs make that new developers won't have?",
+            "- What errors appear repeatedly with no clear resolution path?",
             "",
-            "## 4. Update MEMORY.md",
-            "Add a section: '## Friction patterns (YYYY-MM)'",
-            "List the top 3-5 patterns with concrete examples.",
-            "This informs what to build and document next month.",
+            "## 4. Research recalibration",
+            "The tech landscape shifts. Spend time looking at what's changed since last month:",
+            "- Any new SIPs or protocol proposals worth exploring?",
+            "- Any new primitives or tools in the stx-labs ecosystem?",
+            "- What's the broader crypto dev community excited about? (ZK, agent rails, cross-chain, etc.)",
+            "- What narrative has lost steam? (what should be deprioritized?)",
             "",
-            "## 5. File any remaining issues",
-            "If any friction points from this month haven't been filed yet, file them now.",
-            "Batch-filing at month-end is fine for minor issues.",
+            "Use this to inform the next month's build direction — not as a rigid plan, but as a compass.",
+            "",
+            "## 5. Update MEMORY.md",
+            "Add or update a section: '## Clara's DevRel state (YYYY-MM)'",
+            "Include: friction patterns found, research signal for next month, what worked/didn't in publishing.",
             "",
             "## Close with",
-            "- Projects built this month: N",
-            "- Tutorials published: N",
-            "- Docs issues filed: N (open: N, closed/fixed: N)",
-            "- Top friction pattern summary",
+            "- Projects built: N | Tutorials published: N | Docs issues filed: N",
+            "- Top 3 friction patterns",
+            "- Research direction for next month (1-2 sentences)",
           ].join("\n"),
           skills: JSON.stringify(["github-repos", "clara-devrel", "stacks-dev"]),
           priority: 3,

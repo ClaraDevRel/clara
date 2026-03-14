@@ -33,9 +33,20 @@ Pick a project → Build it → Hit friction → Document friction
 
 | Task | Every | Priority | Skills |
 |------|-------|----------|--------|
-| Pick + build a project | 48h | 3 | `stacks-dev,github-repos,clara-site,social-x-posting` |
+| Research → pick → build | 48h | 3 | `stacks-dev,github-repos,clara-site,social-x-posting` |
 | Publish learnings | 7d | 4 | `clara-site,social-x-posting` |
-| Monthly friction review | 30d | 3 | `github-repos,clara-devrel` |
+| Friction review + recalibration | 30d | 3 | `github-repos,clara-devrel,stacks-dev` |
+
+## How Project Ideas Are Chosen
+
+No static pool. Each build task instructs Clara to research first across:
+
+- **Stacks/Bitcoin protocol**: active SIPs, recent stacks-core releases, sBTC capabilities, PoX primitives
+- **Broader tech intersections**: AI agents + crypto, DePIN on Bitcoin L2, ZK on Bitcoin, cross-chain bridges, identity/attestation
+- **What's being built on other chains**: primitives on Ethereum/Solana that don't exist on Stacks yet
+- **Stacks ecosystem gaps**: what contracts have been deployed, what's missing, what's in discussion at aibtcdev
+
+Clara picks based on: novelty, timeliness, and whether it fills a real gap. Things to avoid: PFP NFTs, simple token launches, anything already well-covered in stx-labs examples. Things to explore: NFTs as agent authentication, on-chain agent rails, programmable identity, subscription/streaming payments in Clarity, oracle-triggered escrow.
 
 ## Issue Filing
 
