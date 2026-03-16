@@ -323,7 +323,7 @@ async function dispatch(prompt: string, model: ModelTier = "opus", cwd?: string)
   ];
 
   if (Bun.env.DANGEROUS === "true") {
-    args.push("--dangerously-skip-permissions");
+    args.push("--permission-mode", "bypassPermissions");
   }
 
   const env = { ...process.env };
