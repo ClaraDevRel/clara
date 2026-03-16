@@ -198,40 +198,20 @@ Do not put shared rules or fleet-wide instructions in MEMORY.md — those belong
 2. **Branch** — Create a feature branch (`git checkout -b fix/issue-slug`)
 3. **Changes** — Implement the fix or feature; keep scope tight
 4. **Simplify** — Run `/simplify` against all changed files before opening the PR. This reviews changed code for reuse, quality, and efficiency, then fixes issues found. Do this before PR creation, not as a post-merge review.
-5. **PR** — Push branch and open a PR via `gh pr create` (Arc-only: hand off via fleet-handoff if you can't push)
+5. **PR** — Push branch and open a PR via `gh pr create`
 6. **CI** — Let GitHub Actions run tests; review results
 7. **Review** — Address review comments, push fixups
 8. **Merge** — Squash merge when green; wait 30s, then merge release-please if present
 
-This applies to all Arc-controlled repos. For `arc-starter` itself, run only targeted syntax checks (e.g. `bun build --no-bundle`), never full test suites. If a repo lacks CI, create a follow-up task to add GitHub Actions workflows before attempting test-dependent work.
+This applies to all Clara-controlled repos. For `ClaraDevRel/clara` itself, run only targeted syntax checks (e.g. `bun build --no-bundle`), never full test suites. If a repo lacks CI, create a follow-up task to add GitHub Actions workflows before attempting test-dependent work.
 
 ---
 
-## ⛔ GitHub is Arc-Only — MANDATORY PRE-TASK CHECK
+## GitHub Access
 
-**STOP. Before doing ANY work, answer this: does this task require `git push`, a PR, `gh` CLI, GitHub Actions, or cloning a private repo?**
+Clara has full push access to `ClaraDevRel/*` via `gh` (authenticated as `ClaraDevRel` with `repo` scope). Home repo is `ClaraDevRel/clara` — push directly from this droplet.
 
-If YES → **immediately** run fleet-handoff and close your task. Do not attempt the GitHub operation. Do not create a subtask. Do not request credentials. Do not set status=blocked. Just hand off:
-
-```
-arc skills run --name fleet-handoff -- initiate --agent arc --task-id <your-task-id> \
-  --progress "what you completed so far" \
-  --remaining "the GitHub operation needed" \
-  --reason "GitHub is Arc-only"
-arc tasks close --id <your-task-id> --status completed --summary "Handed off to Arc (GitHub-only policy)"
-```
-
-**You have no GitHub credentials and never will.** This is permanent and architectural — not a gap to escalate about.
-
-**Every one of these actions is a policy violation:**
-- ❌ Creating a task that requests GitHub credentials, PAT, SSH key, or GITHUB_TOKEN
-- ❌ Setting `status=blocked` with a GitHub-related reason
-- ❌ Creating any follow-up task about GitHub access
-- ❌ Asking a human for GitHub credentials
-- ❌ Mentioning "escalation" in the context of GitHub
-- ❌ Any task subject containing "GitHub credentials", "GitHub access", "request PAT"
-
-**The ONLY correct response to GitHub work is `fleet-handoff --agent arc`.** No exceptions. No alternatives. If you find yourself typing "credential" or "PAT" or "token" in a task subject — stop and fleet-handoff instead.
+For repos outside `ClaraDevRel/*` (e.g. `aibtcdev/*`, third-party repos): check access first with `gh repo view <owner/repo>`, open PRs from forks if no direct push access. Do not assume access.
 
 ---
 
@@ -247,7 +227,7 @@ arc tasks close --id <your-task-id> --status completed --summary "Handed off to 
 
 Before setting `status=blocked` or escalating to a human:
 
-1. **Is this GitHub?** → `fleet-handoff --agent arc`. See "GitHub is Arc-Only" above. NEVER escalate to human.
+1. **Is this GitHub?** → Clara handles her own GitHub. Use `gh` directly. Only escalate to human if `gh auth status` shows expired credentials.
 2. **Check your own skills.** Run `arc skills` — the answer is usually already installed.
 3. **Check your contacts.** The `contacts` skill has every fleet member, their addresses, and capabilities.
 4. **Can another agent help?** Use `fleet-handoff --agent <name>` or `POST /api/tasks` to route work.
