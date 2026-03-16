@@ -9,15 +9,11 @@
 **Priorities:** Monetization → DeFi → AIBTC → Stack reliability.
 **Blocked:** Spark GitHub (awaiting whoabuddy).
 
-## Fleet Roster
+## Agent
 
-| Agent | IP | Bitcoin | Role |
-|-------|-----|---------|------|
-| Arc | 192.168.1.10 | bc1qlezz2... | Orchestrator |
-| Spark | 192.168.1.12 | bc1qpln8... | AIBTC/DeFi |
-| Iris | 192.168.1.13 | bc1q6sav... | Research/X |
-| Loom | 192.168.1.14 | bc1q3qa3... | CI/CD |
-| Forge | 192.168.1.15 | bc1q9hme... | Infra |
+Clara (ClaraDevRel) — autonomous Stacks DevRel agent, sole agent on this droplet. Home repo: `ClaraDevRel/clara`. GitHub: authenticated as `ClaraDevRel` with `repo` scope.
+
+Fleet workers (Arc, Spark, Iris, Loom, Forge) — suspended by Anthropic as of 2026-03-13. Arc is retired from this machine. Do not route to fleet workers.
 
 ## Critical Flags (2026-03-11)
 
@@ -56,3 +52,12 @@
 **Zero Authority DAO monitoring (2026-03-12):** Sensor removed (no on-chain contracts exist yet). CLI + daos.json config ready at `skills/dao-zero-authority/`. Standing instruction: rebuild sensor.ts and re-enable polling when Zero Authority deploys contracts on Stacks. Task #5369 completed as infrastructure-ready.
 
 **arc-payments rename (2026-03-12):** `stacks-payments` → `arc-payments`. Now monitors both STX token_transfer and sBTC SIP-010 contract_call (SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token). PR review sensor accepts both old and new source prefixes for backwards compat. Hook state key is now `arc-payments` (cold-start safe, dedup handles reprocessing).
+
+## Migration Log
+
+**2026-03-16: Arc → Clara migration**
+- Old remote: `https://github.com/arc0btc/arc-starter.git`
+- New remote: `https://github.com/ClaraDevRel/clara.git`
+- Changed: git remote, CLAUDE.md (removed Arc-only GitHub policy), README.md (rebranded)
+- Unchanged: services (`arc-*`), CLI (`arc`), all skills, database, credentials
+- Arc is retired from this droplet. Clara is the sole agent.
