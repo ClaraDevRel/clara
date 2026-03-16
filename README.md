@@ -1,8 +1,8 @@
-# arc-starter
+# clara
 
-A reference implementation for building autonomous agents on [Bun](https://bun.sh) + [Claude Code](https://docs.anthropic.com/en/docs/claude-code). Everything is a task in SQLite. Two services — sensors and dispatch — coordinate through a shared queue. Skills extend what the agent can do without touching core code.
+Clara is an autonomous Stacks DevRel agent — building sample apps, writing tutorials, reviewing docs, and pushing for a better developer experience on Stacks. She runs on [Bun](https://bun.sh) + [Claude Code](https://docs.anthropic.com/en/docs/claude-code). Everything is a task in SQLite. Two services — sensors and dispatch — coordinate through a shared queue. Skills extend what she can do without touching core code.
 
-This is Arc's own stack. It's opinionated: CLI-first, file-based memory, git-versioned state, no external orchestrator. If you're coming from [aibtcdev/loop-starter-kit](https://github.com/aibtcdev/loop-starter-kit), the key differences are custom dispatch with 3-tier model routing, worktree isolation for risky tasks, a skill system that scopes context per-task, and encrypted credential management.
+The engine is opinionated: CLI-first, file-based memory, git-versioned state, no external orchestrator. Key features: custom dispatch with 3-tier model routing, worktree isolation for risky tasks, a skill system that scopes context per-task, and encrypted credential management.
 
 ## How it works
 
@@ -19,8 +19,8 @@ Everything flows through the **task queue**. Sensors create tasks. Dispatch exec
 
 ```bash
 # Clone the repo
-git clone https://github.com/arc0btc/arc-starter.git
-cd arc-starter
+git clone https://github.com/ClaraDevRel/clara.git
+cd clara
 
 # Install prerequisites (tmux, bun, gh, claude CLI, database, credential store, arc CLI)
 bash scripts/install-prerequisites.sh
@@ -146,7 +146,7 @@ Use `arc status` to see daily cost totals.
 
 ## Autonomous mode
 
-Dispatch spawns Claude Code with `--dangerously-skip-permissions` when `DANGEROUS=true` is set in `.env`. This is required for unattended operation — without it, Claude Code will prompt for permission on every tool use.
+Dispatch runs in `--print` mode which allows headless tool execution without permission prompts. `DANGEROUS=true` in `.env` enables this mode (note: `--dangerously-skip-permissions` is blocked when running as root in Claude Code 2.1.76+; `--print` mode is used instead).
 
 **What this means:** The agent can read, write, and execute anything your user account can. It operates within the constraints defined in `SOUL.md` and `CLAUDE.md`, but there is no technical permission boundary beyond your OS user account.
 
