@@ -322,9 +322,9 @@ async function dispatch(prompt: string, model: ModelTier = "opus", cwd?: string)
     "--no-session-persistence",
   ];
 
-  if (Bun.env.DANGEROUS === "true") {
-    args.push("--permission-mode", "bypassPermissions");
-  }
+  // Note: --dangerously-skip-permissions and --permission-mode bypassPermissions are
+  // blocked when running as root (Claude Code 2.1.76+). --print mode implicitly allows
+  // headless tool execution without permission prompts, so no bypass flag is needed.
 
   const env = { ...process.env };
   if (process.env.TEST_TOKEN_OPTIMIZATION === "true" || model !== "opus") {
